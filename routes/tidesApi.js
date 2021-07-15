@@ -5,7 +5,7 @@ const NEW_MOCK_TIDE_DATA = JSON.parse('{"disclaimer": "NOT SUITABLE FOR NAVIGATI
 
 
 router.get("/", (req, res, next) => {
-  res.send(NEW_MOCK_TIDE_DATA);
+  res.send(NEW_MOCK_TIDE_DATA).status(200);
 });
 
 module.exports = router;
