@@ -1,12 +1,16 @@
 const createError = require('http-errors');
 const express = require('express');
+const bodyParser = require('body-parser');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const axios = require('axios')
 
 const parseWeather = require('./parseWeather');
+const { DARKSKY_KEY, TIDES_KEY } = require('./config/keys');
+
 
 const indexRouter   = require('./routes/index');
 const weatherRouter = require('./routes/weatherApi');
@@ -38,8 +42,8 @@ app.set('view engine', 'jade');
 
 app.use(cors());
 app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended:false}));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -49,22 +53,28 @@ app.use('/weatherApi', weatherRouter);
 app.use('/tidesApi', tidesRouter);
 
 
-// *********
-// Loads database with a record of a
-// mock weather data that has been trimmed.
-// *********
-// const myWeather = new Weather(parseWeather(NEW_MOCK_WEATHER_DATA))
+// in milliseconds:  min*sec*1000
+// const interval = 30*60*1000;  // 30 min
 
-// myWeather.save( error => {
-//   if (error) sendStatus(404)
-// });
+// setInterval(() => {
+//    // Increment post tracker
+//    console.log(`Wait for ${interval/1000} seconds...`)
+//    axios.get(`https://api.darksky.net/forecast/${DARKSKY_KEY}/20.89249643,-156.4249983?exclude=[minutely]`)
+//       .then(response => {
+//          const myWeather = new Weather(parseWeather(response.data))
+//          myWeather.save( error => {
+//            if (error) sendStatus(404)
+//          });
+//          console.log(`Darksy data saved to db.\n`)
+//       })
+//       .catch(error => console.log('Error to fetch darksky data\n'))
+// }, interval);
 
 
 app.get('/winds', (req, res) => {
   console.log('weather requested')
   Weather.find({}, (error, weather) => {
-
-    res.send(weather[weather.length-1])
+    res.send(weather[weather.length-1]);
   });
 });
 
