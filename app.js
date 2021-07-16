@@ -3,24 +3,34 @@ const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
-const bodyParser = require('body-parser');
 const cors = require('cors');
 const mongoose = require('mongoose');
 
+const parseWeather = require('./parseWeather');
+
 const indexRouter   = require('./routes/index');
-const usersRouter   = require('./routes/users');
 const weatherRouter = require('./routes/weatherApi');
 const tidesRouter   = require('./routes/tidesApi');
 
+
 const app = express();
 
-const { DB_URL } = require('./env');
+const { DB_URL, NEW_MOCK_WEATHER_DATA, NEW_MOCK_TIDE_DATA } = require('./env');
 
-const Winds = mongoose.model('winds', {
-  name: String,
-  message: String
-})
+const Schema = mongoose.Schema;
 
+const weatherSchema = new Schema({
+  longitude: Number,
+  latitude: Number,
+  timezone: String,
+  offset: Number,
+  currently: Object,
+  daily: Object,
+  hourly: Object,
+  flags: Object
+});
+
+const Weather = mongoose.model('winds', weatherSchema);
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -32,14 +42,32 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({extended:false}))
 
 
 app.use('/', indexRouter);
-app.use('/users', usersRouter);
 app.use('/weatherApi', weatherRouter);
 app.use('/tidesApi', tidesRouter);
+
+
+// *********
+// Loads database with a record of a
+// mock weather data that has been trimmed.
+// *********
+// const myWeather = new Weather(parseWeather(NEW_MOCK_WEATHER_DATA))
+
+// myWeather.save( error => {
+//   if (error) sendStatus(404)
+// });
+
+
+app.get('/winds', (req, res) => {
+  console.log('weather requested')
+  Weather.find({}, (error, weather) => {
+
+    res.send(weather[weather.length-1])
+  });
+});
+
 
 
 mongoose.connect(DB_URL, error => {
