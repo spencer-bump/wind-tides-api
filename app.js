@@ -6,12 +6,11 @@ const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const axios = require('axios');
+const axios = require('axios')
 
 const parseWeather = require('./parseWeather');
-const { DARKSKY_KEY, TIDES_KEY } = require('./config/keys');
 const { DB_URL, NEW_MOCK_WEATHER_DATA, NEW_MOCK_TIDE_DATA } = require('./env');
-
+const { DARKSKY_KEY, TIDES_KEY } = require('./config/keys');
 
 const indexRouter   = require('./routes/index');
 const weatherRouter = require('./routes/weatherApi');
@@ -21,6 +20,8 @@ const tidesRouter   = require('./routes/tidesApi');
 const app = express();
 
 
+
+// Mongoose Database
 const Schema = mongoose.Schema;
 
 const weatherSchema = new Schema({
@@ -35,6 +36,54 @@ const weatherSchema = new Schema({
 });
 
 const Weather = mongoose.model('winds', weatherSchema);
+const darkskyIntervalTime = 0.1*60*1000;  // 30 sec
+
+const saveToDb = data => {
+  const myWeather = new Weather(parseWeather(data))
+   myWeather.save( error => {
+     if (error) sendStatus(404)
+     console.log(`Darksy data saved to db.\n`)
+   });
+}
+// End Mongoose Database
+
+
+// Socket IO
+const http = require('http');
+const server = http.createServer(app);
+const socketIo = require('socket.io');
+
+// Socket.io
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+let num = 0;
+const getApiAndEmit = socket => {
+  num = num + 3;
+  socket.emit("darksky", num);
+};
+
+let ioInterval;
+io.on("connection", (socket) => {
+  console.log("New client connected");
+  if (ioInterval) {
+    clearInterval(ioInterval);
+  }
+  getApiAndEmit(socket)
+  ioInterval = setInterval(() => getApiAndEmit(socket), 3000);
+  socket.on("disconnect", () => {
+    console.log("Client disconnected");
+    clearInterval(ioInterval);
+  });
+});
+// End Socket IO
+
+
+
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -53,22 +102,39 @@ app.use('/weatherApi', weatherRouter);
 app.use('/tidesApi', tidesRouter);
 
 
-// in milliseconds:  min*sec*1000
-// const interval = 30*60*1000;  // 30 min
+// *********
+// Loads database with a record of a
+// mock weather data that has been trimmed.
+// *********
+// const myWeather = new Weather(parseWeather(NEW_MOCK_WEATHER_DATA))
 
-// setInterval(() => {
-//    // Increment post tracker
-//    console.log(`Wait for ${interval/1000} seconds...`)
+// myWeather.save( error => {
+//   if (error) sendStatus(404)
+// });
+
+
+
+// https://api.darksky.net/forecast/e7957368598085b5004df129bb5d6dbf/37.8267,-122.4233
+
+// const darkskyIntervalTime = 0.1*60*1000;  // 30 sec
+
+// const saveToDb = data => {
+//   const myWeather = new Weather(parseWeather(data))
+//    myWeather.save( error => {
+//      if (error) sendStatus(404)
+//      console.log(`Darksy data saved to db.\n`)
+//    });
+// }
+
+// let darkskyInterval;
+// darkskyInterval = setInterval(() => {
+//    console.log(`Wait for ${darkskyIntervalTime/1000} seconds...`)
 //    axios.get(`https://api.darksky.net/forecast/${DARKSKY_KEY}/20.89249643,-156.4249983?exclude=[minutely]`)
 //       .then(response => {
-//          const myWeather = new Weather(parseWeather(response.data))
-//          myWeather.save( error => {
-//            if (error) sendStatus(404)
-//          });
-//          console.log(`Darksy data saved to db.\n`)
+//         saveToDb(response.data);
 //       })
 //       .catch(error => console.log('Error to fetch darksky data\n'))
-// }, interval);
+// }, darkskyIntervalTime);
 
 
 app.get('/winds', (req, res) => {
@@ -77,7 +143,6 @@ app.get('/winds', (req, res) => {
     res.send(weather[weather.length-1]);
   });
 });
-
 
 
 mongoose.connect(DB_URL, error => {
@@ -101,4 +166,4 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-module.exports = app;
+module.exports = { "app": app, "server": server};
