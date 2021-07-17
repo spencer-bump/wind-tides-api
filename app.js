@@ -6,10 +6,11 @@ const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const axios = require('axios')
+const axios = require('axios');
 
 const parseWeather = require('./parseWeather');
 const { DARKSKY_KEY, TIDES_KEY } = require('./config/keys');
+const { DB_URL, NEW_MOCK_WEATHER_DATA, NEW_MOCK_TIDE_DATA } = require('./env');
 
 
 const indexRouter   = require('./routes/index');
@@ -19,7 +20,6 @@ const tidesRouter   = require('./routes/tidesApi');
 
 const app = express();
 
-const { DB_URL, NEW_MOCK_WEATHER_DATA, NEW_MOCK_TIDE_DATA } = require('./env');
 
 const Schema = mongoose.Schema;
 
